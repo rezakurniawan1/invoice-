@@ -60,6 +60,7 @@ def generate_pdf(data):
     story.append(Paragraph(f"Biaya ongkir : Rp {data['ongkir']:,}", styles['Normal']))
     story.append(Spacer(1, 12))
 
+    # Total dihitung dari harga_barang + ongkir
     story.append(Paragraph(f"TOTAL : Rp {data['total']:,}", styles['Normal']))
     story.append(Spacer(1, 12))
     
@@ -109,7 +110,13 @@ with st.form(key='invoice_form'):
     rincian = st.text_area("Rincian Barang")
     harga_barang = st.number_input("Harga Barang", min_value=0, step=1000)
     ongkir = st.number_input("Biaya Ongkir", min_value=0, step=1000)
-    total = st.number_input("Total", min_value=0, step=1000)
+    
+    # Hitung total otomatis
+    total = harga_barang + ongkir
+    
+    # Tampilkan total sebagai informasi (tidak bisa diedit)
+    st.write(f"Total: Rp {total:,}")
+    
     submit_button = st.form_submit_button(label="Generate PDF")
 
 if submit_button:
@@ -122,7 +129,7 @@ if submit_button:
         "rincian": rincian,
         "harga_barang": harga_barang,
         "ongkir": ongkir,
-        "total": total
+        "total": total  # Total sudah dihitung
     }
     
     pdf_buffer = generate_pdf(data)
