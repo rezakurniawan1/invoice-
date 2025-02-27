@@ -77,7 +77,7 @@ def generate_pdf(data):
         watermark_width = 200  # Kecilkan ukuran untuk A5
         watermark_height = 200
         x = (A5[0] - watermark_width) / 2  # Tengah horizontal untuk A5
-        y = (A5[1] - watermark_height) / 2 + 100  # Naikkan 100 poin dari tengah untuk A5
+        y = (A5[1] - watermark_height) / 2 + 200  # Naikkan 100 poin dari tengah untuk A5
         
         # Atur transparansi rendah
         canvas.setFillAlpha(0.1)
