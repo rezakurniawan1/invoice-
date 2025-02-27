@@ -1,5 +1,5 @@
 import streamlit as st
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A5  # Ganti dari A4 ke A5
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.pdfgen import canvas
@@ -28,7 +28,7 @@ def create_round_logo(url):
 # Fungsi untuk generate PDF dengan logo sebagai watermark
 def generate_pdf(data):
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    doc = SimpleDocTemplate(buffer, pagesize=A5)  # Ubah ke A5
     styles = getSampleStyleSheet()
     story = []
 
@@ -36,7 +36,7 @@ def generate_pdf(data):
     story.append(Paragraph(" INVOICE PEMBELIAN ", styles['Heading2']))
     tanggal_format = f"{data['tanggal']} {data['bulan']} {data['tahun']}"
     story.append(Paragraph(tanggal_format, styles['Normal']))
-    story.append(Paragraph(".............................................................................................................................", styles['Normal']))
+    story.append(Paragraph("...................................................................................", styles['Normal']))  # Sesuaikan panjang garis
     story.append(Spacer(1, 12))
     
     # Teks dibuat bold
@@ -73,11 +73,11 @@ def generate_pdf(data):
         logo_url = "https://p16-sign-va.tiktokcdn.com/tos-maliva-avt-0068/e57060a342b741fd0a7c488797159363~tplv-tiktokx-cropcenter:1080:1080.jpeg?dr=14579&nonce=53406&refresh_token=b5ab12a14055351a33df4b3d43b67108&x-expires=1740837600&x-signature=Kr%2FjmoP6VwXNNR%2Bc0cFdbeQCvBM%3D&idc=my&ps=13740610&shcp=81f88b70&shp=a5d48078&t=4d5b0474"
         logo_path = create_round_logo(logo_url)
         
-        # Atur posisi watermark di tengah halaman
-        watermark_width = 300
-        watermark_height = 300
-        x = (A4[0] - watermark_width) / 2
-        y = (A4[1] - watermark_height) / 2 + 200
+        # Atur posisi watermark untuk A5
+        watermark_width = 200  # Kecilkan ukuran untuk A5
+        watermark_height = 200
+        x = (A5[0] - watermark_width) / 2  # Tengah horizontal untuk A5
+        y = (A5[1] - watermark_height) / 2 + 100  # Naikkan 100 poin dari tengah untuk A5
         
         # Atur transparansi rendah
         canvas.setFillAlpha(0.1)
@@ -114,7 +114,7 @@ with st.form(key='invoice_form'):
     # Hitung total otomatis
     total = harga_barang + ongkir
     
-    # Tampilkan total sebagai informasi (tidak bisa diedit)
+    # Tampilkan total sebagai informasi
     st.write(f"Total: Rp {total:,}")
     
     submit_button = st.form_submit_button(label="Generate PDF")
@@ -129,7 +129,7 @@ if submit_button:
         "rincian": rincian,
         "harga_barang": harga_barang,
         "ongkir": ongkir,
-        "total": total  # Total sudah dihitung
+        "total": total
     }
     
     pdf_buffer = generate_pdf(data)
