@@ -115,7 +115,7 @@ with st.form(key='invoice_form'):
     total = harga_barang + ongkir
     
     # Tampilkan total sebagai informasi
-    st.write(f"Total: Rp {total:,}")
+    st.write(f"<b> Total: Rp {total:,} </b>")
     
     submit_button = st.form_submit_button(label="Generate PDF")
 
