@@ -139,6 +139,3 @@ if submit_button:
         file_name="invoice.pdf",
         mime="application/pdf"
     )
-
-# Instruksi untuk menjalankan
-st.write("Jalankan aplikasi dengan perintah: `streamlit run invoice.py`")
