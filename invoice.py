@@ -1,5 +1,5 @@
 import streamlit as st
-from reportlab.lib.pagesizes import A5  # Ganti dari A4 ke A5
+from reportlab.lib.pagesizes import A5
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.pdfgen import canvas
@@ -10,9 +10,22 @@ import tempfile
 import os
 
 # Fungsi untuk mengunduh dan membuat logo bulat dengan saturasi rendah
-def create_round_logo(url):
-    response = requests.get(url)
-    img = PILImage.open(io.BytesIO(response.content)).convert("RGBA")
+def create_round_logo(url=None, fallback_path="logo.png"):
+    try:
+        if url:
+            response = requests.get(url, timeout=5)
+            response.raise_for_status()  # Periksa jika request gagal
+            img = PILImage.open(io.BytesIO(response.content)).convert("RGBA")
+        else:
+            raise ValueError("No URL provided, using fallback")
+    except (requests.RequestException, ValueError, PILImage.UnidentifiedImageError):
+        # Jika gagal, gunakan logo lokal sebagai fallback
+        try:
+            img = PILImage.open(fallback_path).convert("RGBA")
+        except:
+            # Jika fallback juga gagal, buat placeholder sederhana
+            img = PILImage.new("RGBA", (200, 200), (255, 255, 255, 0))
+    
     size = min(img.size)
     mask = PILImage.new('L', (size, size), 0)
     draw = ImageDraw.Draw(mask)
@@ -28,7 +41,7 @@ def create_round_logo(url):
 # Fungsi untuk generate PDF dengan logo sebagai watermark
 def generate_pdf(data):
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A5)  # Ubah ke A5
+    doc = SimpleDocTemplate(buffer, pagesize=A5)
     styles = getSampleStyleSheet()
     story = []
 
@@ -36,10 +49,9 @@ def generate_pdf(data):
     story.append(Paragraph(" INVOICE PEMBELIAN ", styles['Heading2']))
     tanggal_format = f"{data['tanggal']} {data['bulan']} {data['tahun']}"
     story.append(Paragraph(tanggal_format, styles['Normal']))
-    story.append(Paragraph("...................................................................................", styles['Normal']))  # Sesuaikan panjang garis
+    story.append(Paragraph("...................................................................................", styles['Normal']))
     story.append(Spacer(1, 12))
     
-    # Teks dibuat bold
     story.append(Paragraph("TRANSFER SESUAI NOMINAL YANG TERTERA KE REKENING di bawah ini :", styles['Normal']))
     story.append(Paragraph("<b>• BCA 3130143996 a/n AGUS EKO YULIANTO </b>", styles['Normal']))
     story.append(Spacer(1, 12))
@@ -60,7 +72,6 @@ def generate_pdf(data):
     story.append(Paragraph(f"Biaya ongkir : Rp {data['ongkir']:,}", styles['Normal']))
     story.append(Spacer(1, 12))
 
-    # Total dihitung dari harga_barang + ongkir
     story.append(Paragraph(f"<b> TOTAL : Rp {data['total']:,} </b>", styles['Normal']))
     story.append(Spacer(1, 12))
     
@@ -71,22 +82,19 @@ def generate_pdf(data):
     def add_watermark(canvas, doc):
         canvas.saveState()
         logo_url = "https://p16-sign-va.tiktokcdn.com/tos-maliva-avt-0068/e57060a342b741fd0a7c488797159363~tplv-tiktokx-cropcenter:1080:1080.jpeg?dr=14579&nonce=53406&refresh_token=b5ab12a14055351a33df4b3d43b67108&x-expires=1740837600&x-signature=Kr%2FjmoP6VwXNNR%2Bc0cFdbeQCvBM%3D&idc=my&ps=13740610&shcp=81f88b70&shp=a5d48078&t=4d5b0474"
-        logo_path = create_round_logo(logo_url)
+        logo_path = create_round_logo(logo_url, fallback_path="logo.png")
         
-        # Atur posisi watermark untuk A5
-        watermark_width = 200  # Kecilkan ukuran untuk A5
+        watermark_width = 200
         watermark_height = 200
-        x = (A5[0] - watermark_width) / 2  # Tengah horizontal untuk A5
-        y = (A5[1] - watermark_height) / 2 + 50  # Naikkan 100 poin dari tengah untuk A5
+        x = (A5[0] - watermark_width) / 2
+        y = (A5[1] - watermark_height) / 2 + 50
         
-        # Atur transparansi rendah
         canvas.setFillAlpha(0.1)
         canvas.drawImage(logo_path, x, y, width=watermark_width, height=watermark_height, mask='auto')
         
         canvas.restoreState()
         os.remove(logo_path)
 
-    # Build PDF dengan watermark
     doc.build(story, onFirstPage=add_watermark, onLaterPages=add_watermark)
     
     buffer.seek(0)
@@ -95,7 +103,6 @@ def generate_pdf(data):
 # Aplikasi Streamlit
 st.title("Generate Invoice")
 
-# Daftar bulan dalam bahasa Indonesia
 bulan_indonesia = [
     "Januari", "Februari", "Maret", "April", "Mei", "Juni",
     "Juli", "Agustus", "September", "Oktober", "November", "Desember"
@@ -111,10 +118,8 @@ with st.form(key='invoice_form'):
     harga_barang = st.number_input("Harga Barang", min_value=0, step=1000)
     ongkir = st.number_input("Biaya Ongkir", min_value=0, step=1000)
     
-    # Hitung total otomatis
     total = harga_barang + ongkir
     
-    # Tampilkan total sebagai informasi
     st.write(f"Total: Rp {total:,}")
     
     submit_button = st.form_submit_button(label="Generate PDF")
@@ -139,3 +144,6 @@ if submit_button:
         file_name="invoice.pdf",
         mime="application/pdf"
     )
+
+# Instruksi untuk menjalankan
+st.write("Jalankan aplikasi dengan perintah: `streamlit run invoice.py`")
