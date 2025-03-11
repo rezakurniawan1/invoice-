@@ -91,7 +91,7 @@ def generate_pdf(data):
         watermark_width = 200
         watermark_height = 200
         x = (A5[0] - watermark_width) / 2  # Tengah horizontal
-        y = (A5[1] - watermark_height) / 2  # Tengah vertikal, tanpa offset
+        y = (A5[1] - watermark_height) / 2 + 20 # Tengah vertikal, tanpa offset
         
         canvas.setFillAlpha(0.1)
         canvas.drawImage(logo_path, x, y, width=watermark_width, height=watermark_height, mask='auto')
