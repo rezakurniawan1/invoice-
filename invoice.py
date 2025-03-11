@@ -9,7 +9,7 @@ from PIL import Image as PILImage, ImageDraw
 import tempfile
 import os
 
-# Fungsi untuk mengunduh dan membuat logo bulat dengan saturasi rendah
+# Fungsi untuk membuat logo bulat dengan URL atau fallback lokal
 def create_round_logo(url=None, fallback_path="logo.png"):
     try:
         if url:
@@ -33,12 +33,11 @@ def create_round_logo(url=None, fallback_path="logo.png"):
     img = img.resize((size, size), PILImage.Resampling.LANCZOS)
     img.putalpha(mask)
     
-    # Simpan sementara ke file untuk digunakan oleh ReportLab
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
     img.save(temp_file.name, format='PNG')
     return temp_file.name
 
-# Fungsi untuk generate PDF dengan logo sebagai watermark
+# Fungsi untuk generate PDF
 def generate_pdf(data):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A5)
@@ -59,11 +58,16 @@ def generate_pdf(data):
     story.append(Paragraph(f"Untuk : {data['untuk']}", styles['Normal']))
     story.append(Spacer(1, 12))
 
+    story.append(Paragraph(f"No Hp : {data['nohp']}", styles['Normal']))
+    story.append(Spacer(1, 12))
+    
     story.append(Paragraph(f"Alamat : {data['alamat']}", styles['Normal']))
     story.append(Spacer(1, 12))
     
+    # Rincian Barang dari list barang
     story.append(Paragraph("Rincian Barang :", styles['Normal']))
-    story.append(Paragraph(data['rincian'].replace('\n', '<br/>'), styles['Normal']))
+    for item in data['items']:
+        story.append(Paragraph(f"- {item['nama']} : Rp {item['harga']:,}", styles['Normal']))
     story.append(Spacer(1, 12))
     
     story.append(Paragraph(f"Harga Barang : Rp {data['harga_barang']:,}", styles['Normal']))
@@ -78,16 +82,16 @@ def generate_pdf(data):
     story.append(Paragraph("Mohon dengan seksama di cek kembali invoice kami yang sudah terbit, bila ada kesalahan segera infokan kembali kepada kami. ", styles['Normal']))
     story.append(Paragraph("<b> Terima kasih </b>", styles['Normal']))
 
-    # Fungsi untuk menambahkan watermark
+    # Fungsi untuk menambahkan watermark di tengah
     def add_watermark(canvas, doc):
         canvas.saveState()
-        logo_url = "https://p16-sign-va.tiktokcdn.com/tos-maliva-avt-0068/e57060a342b741fd0a7c488797159363~tplv-tiktokx-cropcenter:1080:1080.jpeg?dr=14579&nonce=53406&refresh_token=b5ab12a14055351a33df4b3d43b67108&x-expires=1740837600&x-signature=Kr%2FjmoP6VwXNNR%2Bc0cFdbeQCvBM%3D&idc=my&ps=13740610&shcp=81f88b70&shp=a5d48078&t=4d5b0474"
+        logo_url = "https://p16-sign-va.tiktokcdn.com/tos-maliva-avt-0068/e57060a342b741fd0a7c488797159363~tplv-tiktokx-cropcenter:1080:1080.jpeg?dr=14579&refresh_token=8a46dcd8&x-expires=1741874400&x-signature=5rjAsXYrKU4dzONcLgk7qO2Go1w%3D&t=4d5b0474&ps=13740610&shp=a5d48078&shcp=81f88b70&idc=my"
         logo_path = create_round_logo(logo_url, fallback_path="logo.png")
         
         watermark_width = 200
         watermark_height = 200
-        x = (A5[0] - watermark_width) / 2
-        y = (A5[1] - watermark_height) / 2 + 50
+        x = (A5[0] - watermark_width) / 2  # Tengah horizontal
+        y = (A5[1] - watermark_height) / 2  # Tengah vertikal, tanpa offset
         
         canvas.setFillAlpha(0.1)
         canvas.drawImage(logo_path, x, y, width=watermark_width, height=watermark_height, mask='auto')
@@ -113,12 +117,28 @@ with st.form(key='invoice_form'):
     bulan = st.selectbox("Bulan", bulan_indonesia)
     tahun = st.number_input("Tahun", min_value=2000, max_value=9999, step=1)
     untuk = st.text_input("Untuk")
+    nohp = st.text_input("No Hp")
     alamat = st.text_area("Alamat")
-    rincian = st.text_area("Rincian Barang")
-    harga_barang = st.number_input("Harga Barang", min_value=0, step=1000)
+    
+    # Input untuk multiple barang
+    st.subheader("Rincian Barang")
+    num_items = st.number_input("Jumlah Barang", min_value=1, max_value=10, step=1, value=1)
+    items = []
+    total_harga_barang = 0
+    
+    for i in range(num_items):
+        col1, col2 = st.columns(2)
+        with col1:
+            nama_barang = st.text_input(f"Nama Barang {i+1}", key=f"nama_{i}")
+        with col2:
+            harga_barang_item = st.number_input(f"Harga Barang {i+1}", min_value=0, step=1000, key=f"harga_{i}")
+            total_harga_barang += harga_barang_item
+        items.append({"nama": nama_barang, "harga": harga_barang_item})
+    
     ongkir = st.number_input("Biaya Ongkir", min_value=0, step=1000)
     
-    total = harga_barang + ongkir
+    # Hitung total
+    total = total_harga_barang + ongkir
     
     st.write(f"Total: Rp {total:,}")
     
@@ -130,9 +150,10 @@ if submit_button:
         "bulan": bulan,
         "tahun": tahun,
         "untuk": untuk,
+        "nohp": nohp,
         "alamat": alamat,
-        "rincian": rincian,
-        "harga_barang": harga_barang,
+        "items": items,
+        "harga_barang": total_harga_barang,
         "ongkir": ongkir,
         "total": total
     }
