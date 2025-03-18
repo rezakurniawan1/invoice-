@@ -1,17 +1,12 @@
 import streamlit as st
-from reportlab.lib.pagesizes import A5
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.pdfgen import canvas
+from PIL import Image as PILImage, ImageDraw, ImageFont
 import io
-from PIL import Image as PILImage, ImageDraw
 import tempfile
 import os
 
 # Fungsi untuk membuat logo bulat hanya dari file lokal
 def create_round_logo(fallback_path="logo.png"):
     try:
-        # Gunakan logo lokal dari direktori
         img = PILImage.open(fallback_path).convert("RGBA")
     except:
         # Jika file lokal tidak ada, buat placeholder sederhana
@@ -28,70 +23,98 @@ def create_round_logo(fallback_path="logo.png"):
     img.save(temp_file.name, format='PNG')
     return temp_file.name
 
-# Fungsi untuk generate PDF
-def generate_pdf(data):
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A5)
-    styles = getSampleStyleSheet()
-    story = []
+# Fungsi untuk generate PNG
+def generate_png(data):
+    # Ukuran A5 dalam piksel (asumsi 96 DPI)
+    width, height = 559, 794  # A5: 148mm x 210mm = 559px x 794px pada 96 DPI
+    
+    # Buat kanvas putih
+    image = PILImage.new("RGB", (width, height), "white")
+    draw = ImageDraw.Draw(image)
+    
+    # Load font (gunakan font default atau spesifik jika ada)
+    try:
+        font = ImageFont.truetype("arial.ttf", 16)
+        font_bold = ImageFont.truetype("arialbd.ttf", 16)
+        font_title = ImageFont.truetype("arialbd.ttf", 24)
+    except:
+        font = ImageFont.load_default()
+        font_bold = ImageFont.load_default()
+        font_title = ImageFont.load_default()
 
+    # Posisi awal teks
+    y_position = 20
+    
     # Konten invoice
-    story.append(Paragraph(" INVOICE PEMBELIAN ", styles['Heading2']))
+    draw.text((width // 2, y_position), "INVOICE PEMBELIAN", font=font_title, fill="black", anchor="mm")
+    y_position += 40
+    
     tanggal_format = f"{data['tanggal']} {data['bulan']} {data['tahun']}"
-    story.append(Paragraph(tanggal_format, styles['Normal']))
-    story.append(Paragraph("...................................................................................", styles['Normal']))
-    story.append(Spacer(1, 12))
+    draw.text((20, y_position), tanggal_format, font=font, fill="black")
+    y_position += 20
     
-    story.append(Paragraph("TRANSFER SESUAI NOMINAL YANG TERTERA KE REKENING di bawah ini :", styles['Normal']))
-    story.append(Paragraph("<b>• BCA 3130143996 a/n AGUS EKO YULIANTO </b>", styles['Normal']))
-    story.append(Spacer(1, 12))
+    draw.text((20, y_position), "-" * 70, font=font, fill="black")
+    y_position += 20
     
-    story.append(Paragraph(f"Untuk : {data['untuk']}", styles['Normal']))
-    story.append(Spacer(1, 12))
-
-    story.append(Paragraph(f"No Hp : {data['nohp']}", styles['Normal']))
-    story.append(Spacer(1, 12))
+    draw.text((20, y_position), "TRANSFER SESUAI NOMINAL YANG TERTERA KE REKENING di bawah ini :", font=font, fill="black")
+    y_position += 20
+    draw.text((20, y_position), "• BCA 3130143996 a/n AGUS EKO YULIANTO", font=font_bold, fill="black")
+    y_position += 30
     
-    story.append(Paragraph(f"Alamat : {data['alamat']}", styles['Normal']))
-    story.append(Spacer(1, 12))
+    draw.text((20, y_position), f"Untuk : {data['untuk']}", font=font, fill="black")
+    y_position += 20
     
-    # Rincian Barang dari list barang
-    story.append(Paragraph("Rincian Barang :", styles['Normal']))
+    draw.text((20, y_position), f"No Hp : {data['nohp']}", font=font, fill="black")
+    y_position += 20
+    
+    draw.text((20, y_position), f"Alamat : {data['alamat']}", font=font, fill="black")
+    y_position += 30
+    
+    # Rincian Barang
+    draw.text((20, y_position), "Rincian Barang :", font=font, fill="black")
+    y_position += 20
     for item in data['items']:
-        story.append(Paragraph(f"- {item['nama']} : Rp {item['harga']:,}", styles['Normal']))
-    story.append(Spacer(1, 12))
+        draw.text((20, y_position), f"- {item['nama']} : Rp {item['harga']:,}", font=font, fill="black")
+        y_position += 20
+    y_position += 10
     
-    story.append(Paragraph(f"Harga Barang : Rp {data['harga_barang']:,}", styles['Normal']))
-    story.append(Spacer(1, 12))
+    draw.text((20, y_position), f"Harga Barang : Rp {data['harga_barang']:,}", font=font, fill="black")
+    y_position += 20
     
-    story.append(Paragraph(f"Biaya ongkir : Rp {data['ongkir']:,}", styles['Normal']))
-    story.append(Spacer(1, 12))
+    draw.text((20, y_position), f"Biaya ongkir : Rp {data['ongkir']:,}", font=font, fill="black")
+    y_position += 20
+    
+    draw.text((20, y_position), f"TOTAL : Rp {data['total']:,}", font=font_bold, fill="black")
+    y_position += 30
+    
+    draw.text((20, y_position), "Mohon dengan seksama di cek kembali invoice kami yang sudah terbit,", font=font, fill="black")
+    y_position += 20
+    draw.text((20, y_position), "bila ada kesalahan segera infokan kembali kepada kami.", font=font, fill="black")
+    y_position += 20
+    draw.text((20, y_position), "Terima kasih", font=font_bold, fill="black")
 
-    story.append(Paragraph(f"<b> TOTAL : Rp {data['total']:,} </b>", styles['Normal']))
-    story.append(Spacer(1, 12))
+    # Tambahkan watermark
+    logo_path = create_round_logo(fallback_path="logo.png")
+    watermark = PILImage.open(logo_path).convert("RGBA")
+    watermark = watermark.resize((200, 200), PILImage.Resampling.LANCZOS)
     
-    story.append(Paragraph("Mohon dengan seksama di cek kembali invoice kami yang sudah terbit, bila ada kesalahan segera infokan kembali kepada kami. ", styles['Normal']))
-    story.append(Paragraph("<b> Terima kasih </b>", styles['Normal']))
-
-    # Fungsi untuk menambahkan watermark di tengah
-    def add_watermark(canvas, doc):
-        canvas.saveState()
-        logo_path = create_round_logo(fallback_path="logo.png")  # Hanya gunakan logo lokal
-        
-        watermark_width = 200
-        watermark_height = 200
-        x = (A5[0] - watermark_width) / 2  # Tengah horizontal
-        y = (A5[1] - watermark_height) / 2 + 20  # Tengah vertikal dengan offset kecil
-        
-        canvas.setFillAlpha(0.1)
-        canvas.drawImage(logo_path, x, y, width=watermark_width, height=watermark_height, mask='auto')
-        
-        canvas.restoreState()
-        os.remove(logo_path)
-
-    doc.build(story, onFirstPage=add_watermark, onLaterPages=add_watermark)
+    # Posisi watermark di tengah
+    watermark_x = (width - 200) // 2
+    watermark_y = (height - 200) // 2 + 20  # Tengah vertikal dengan offset kecil
     
+    # Buat layer untuk watermark dengan transparansi
+    watermark_layer = PILImage.new("RGBA", image.size, (0, 0, 0, 0))
+    watermark_layer.paste(watermark, (watermark_x, watermark_y))
+    image = PILImage.composite(watermark_layer, image, watermark_layer)
+    
+    # Simpan ke buffer sebagai PNG
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
     buffer.seek(0)
+    
+    # Hapus file sementara
+    os.remove(logo_path)
+    
     return buffer
 
 # Aplikasi Streamlit
@@ -132,7 +155,7 @@ with st.form(key='invoice_form'):
     
     st.write(f"Total: Rp {total:,}")
     
-    submit_button = st.form_submit_button(label="Generate PDF")
+    submit_button = st.form_submit_button(label="Generate PNG")
 
 if submit_button:
     data = {
@@ -148,12 +171,12 @@ if submit_button:
         "total": total
     }
     
-    pdf_buffer = generate_pdf(data)
+    png_buffer = generate_png(data)
     st.download_button(
-        label="Unduh Invoice",
-        data=pdf_buffer,
-        file_name="invoice.pdf",
-        mime="application/pdf"
+        label="Unduh Invoice (PNG)",
+        data=png_buffer,
+        file_name="invoice.png",
+        mime="image/png"
     )
 
 # Instruksi untuk menjalankan
