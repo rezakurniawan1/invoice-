@@ -4,27 +4,18 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.pdfgen import canvas
 import io
-import requests
 from PIL import Image as PILImage, ImageDraw
 import tempfile
 import os
 
-# Fungsi untuk membuat logo bulat dengan URL atau fallback lokal
-def create_round_logo(url=None, fallback_path="logo.png"):
+# Fungsi untuk membuat logo bulat hanya dari file lokal
+def create_round_logo(fallback_path="logo.png"):
     try:
-        if url:
-            response = requests.get(url, timeout=5)
-            response.raise_for_status()  # Periksa jika request gagal
-            img = PILImage.open(io.BytesIO(response.content)).convert("RGBA")
-        else:
-            raise ValueError("No URL provided, using fallback")
-    except (requests.RequestException, ValueError, PILImage.UnidentifiedImageError):
-        # Jika gagal, gunakan logo lokal sebagai fallback
-        try:
-            img = PILImage.open(fallback_path).convert("RGBA")
-        except:
-            # Jika fallback juga gagal, buat placeholder sederhana
-            img = PILImage.new("RGBA", (200, 200), (255, 255, 255, 0))
+        # Gunakan logo lokal dari direktori
+        img = PILImage.open(fallback_path).convert("RGBA")
+    except:
+        # Jika file lokal tidak ada, buat placeholder sederhana
+        img = PILImage.new("RGBA", (200, 200), (255, 255, 255, 0))
     
     size = min(img.size)
     mask = PILImage.new('L', (size, size), 0)
@@ -85,13 +76,12 @@ def generate_pdf(data):
     # Fungsi untuk menambahkan watermark di tengah
     def add_watermark(canvas, doc):
         canvas.saveState()
-        logo_url = "https://p16-sign-va.tiktokcdn.com/tos-maliva-avt-0068/e57060a342b741fd0a7c488797159363~tplv-tiktokx-cropcenter:1080:1080.jpeg?dr=14579&refresh_token=8a46dcd8&x-expires=1741874400&x-signature=5rjAsXYrKU4dzONcLgk7qO2Go1w%3D&t=4d5b0474&ps=13740610&shp=a5d48078&shcp=81f88b70&idc=my"
-        logo_path = create_round_logo(logo_url, fallback_path="logo.png")
+        logo_path = create_round_logo(fallback_path="logo.png")  # Hanya gunakan logo lokal
         
         watermark_width = 200
         watermark_height = 200
         x = (A5[0] - watermark_width) / 2  # Tengah horizontal
-        y = (A5[1] - watermark_height) / 2 + 20 # Tengah vertikal, tanpa offset
+        y = (A5[1] - watermark_height) / 2 + 20  # Tengah vertikal dengan offset kecil
         
         canvas.setFillAlpha(0.1)
         canvas.drawImage(logo_path, x, y, width=watermark_width, height=watermark_height, mask='auto')
